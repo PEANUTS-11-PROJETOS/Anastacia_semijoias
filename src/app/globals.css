@@ -1,0 +1,116 @@
+@import 'tailwindcss';
+
+/* ==========================================================================
+   Identidade Anastácia Semijoias
+   Cores e fontes vindas do projeto original. Mudou a marca? Mude só aqui.
+   ========================================================================== */
+@theme {
+  /* Roxo — cor principal */
+  --color-roxo: #6e4b8e;
+  --color-roxo-escuro: #33243f;
+  --color-roxo-medio: #8a6ba6;
+  --color-lilas: #efe7f5;
+  --color-lilas-claro: #f7f3fb;
+  --color-lilas-borda: #e4d6f0;
+
+  /* Dourado — cor de destaque */
+  --color-dourado: #b08a3e;
+  --color-dourado-claro: #e7ce93;
+
+  /* Verde do WhatsApp */
+  --color-zap: #1fa855;
+  --color-zap-escuro: #17864a;
+
+  /* Textos */
+  --color-tinta: #33243f;
+  --color-tinta-media: #6e6577;
+  --color-tinta-suave: #8a8194;
+  --color-tinta-clara: #a79db2;
+
+  /* Fontes (as variáveis vêm do next/font no layout) */
+  --font-serifada: var(--fonte-serifada), Georgia, serif;
+  --font-corpo: var(--fonte-corpo), system-ui, sans-serif;
+  --font-rotulo: var(--fonte-rotulo), system-ui, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-lilas-claro);
+  color: var(--color-tinta);
+  font-family: var(--font-corpo);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-lilas-borda);
+  color: var(--color-tinta);
+}
+
+/* Faixa de rolagem horizontal (categorias, vídeos) sem barra visível */
+.rolagem-limpa {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.rolagem-limpa::-webkit-scrollbar {
+  display: none;
+}
+
+/* Rótulo em caixa alta espaçada — usado em toda a marca */
+.rotulo {
+  font-family: var(--font-rotulo);
+  text-transform: uppercase;
+  letter-spacing: 0.34em;
+  font-size: 11px;
+  color: var(--color-dourado);
+}
+
+/* Foco visível e no tom da marca, para navegação por teclado */
+:focus-visible {
+  outline: 2px solid var(--color-roxo);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@keyframes surgir {
+  from {
+    opacity: 0;
+    transform: scale(1.015);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animar-surgir {
+  animation: surgir 0.7s ease;
+}
+
+@keyframes subir {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animar-subir {
+  animation: subir 0.35s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .animar-surgir,
+  .animar-subir {
+    animation: none;
+  }
+}

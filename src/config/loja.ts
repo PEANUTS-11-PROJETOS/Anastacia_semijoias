@@ -1,0 +1,46 @@
+/**
+ * Configuração central da loja.
+ * Praticamente tudo que muda com frequência (contato, textos, frete) está aqui.
+ */
+export const loja = {
+  nome: 'Anastácia Semijoias',
+  slogan: 'Nosso legado, semijoias para você brilhar.',
+
+  /**
+   * ⚠️ TROCAR ANTES DE PUBLICAR ⚠️
+   * Número que recebe os pedidos, no formato internacional, só dígitos:
+   * 55 (Brasil) + DDD + número. Ex.: 5531988887777
+   */
+  whatsapp: '5500000000000' as string,
+
+  /** Nome que aparece nos textos de atendimento. */
+  consultora: 'nossa consultora',
+
+  instagram: 'https://instagram.com/',
+
+  /** Mostrado no rodapé e na página de qualidade. */
+  cidade: 'Brasil',
+
+  /**
+   * Texto que abre a conversa quando a cliente clica no botão flutuante
+   * do WhatsApp sem ter nada na seleção.
+   */
+  mensagemContatoDireto:
+    'Olá! Vim pelo site da Anastácia Semijoias e gostaria de tirar uma dúvida.',
+} as const
+
+/**
+ * Fotos grandes do site, que não são de nenhuma peça específica.
+ * Salve o arquivo em public/marca/ e escreva o caminho aqui.
+ * Deixe '' para o site mostrar o selo da marca no lugar.
+ */
+export const imagens = {
+  /** Foto ao lado do título "A essência da elegância", na home. Ideal: retrato 4:5. */
+  capaHome: '/marca/capa-home.jpg',
+} as const
+
+/** Rótulos dos banhos, usados no site e na mensagem do pedido. */
+export const banhos = {
+  ouro18k: { nome: 'Ouro 18k', cor: '#D4AF37' },
+  rodio: { nome: 'Ródio branco', cor: '#E2E8F0' },
+} as const
