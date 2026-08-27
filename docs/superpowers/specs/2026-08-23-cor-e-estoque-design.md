@@ -19,6 +19,14 @@ loja e aviso de escassez para a cliente ("últimas 2 peças").
 | Escassez × selo manual | O aviso automático vence | É mais urgente e sempre verdadeiro; o selo manual pode estar desatualizado. |
 | Estoque × banho | Não se cruzam | Estoque é contado por cor apenas. Banho continua sendo uma escolha independente, sem estoque próprio. |
 
+### Números provisórios
+
+Dois valores ficaram deliberadamente sem afinação: o **limiar de escassez** (3) e
+o **máximo de cores por peça** (12). Foram deixados nos padrões para não travar o
+trabalho, e os dois são baratos de mudar depois — o limiar é uma linha em
+`config/loja.ts`, o máximo é um número no esquema de validação. Nenhum dos dois
+exige migração de banco. Reabrir isso só faz sentido com o catálogo real em uso.
+
 ## Modelo de dados
 
 ### Tabela nova
