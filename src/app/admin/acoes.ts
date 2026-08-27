@@ -28,6 +28,7 @@ function atualizarVitrine(slug?: string) {
   revalidatePath('/pecas')
   if (slug) revalidatePath(`/pecas/${slug}`)
   revalidatePath('/admin')
+  revalidatePath('/admin/categorias')
 }
 
 export type Resultado =
@@ -155,6 +156,106 @@ export async function reordenarFotos(idsNaOrdem: string[]) {
   await Promise.all(
     idsNaOrdem.map((id, ordem) =>
       supabase.from('produto_fotos').update({ ordem }).eq('id', id),
+    ),
+  )
+  atualizarVitrine()
+}
+
+// -----------------------------------------------------------------------------
+// Categorias — os círculos da home
+//
+// Só edição das que existem: nome, foto e ordem. Criar e excluir ficam de fora
+// de propósito, porque o `id` vira URL (/pecas?categoria=aneis) e é a chave
+// estrangeira das peças — mudá-lo quebraria links já compartilhados.
+// -----------------------------------------------------------------------------
+
+/**
+ * Uma foto de categoria só pode ser apagada do Storage se for da categoria.
+ *
+ * O círculo guarda uma URL solta, e essa URL pode apontar para a foto de uma
+ * PEÇA (foi assim que a primeira capa de categoria foi configurada, na mão).
+ * Apagar o arquivo cegamente destruiria a foto da peça junto. Na dúvida, o
+ * arquivo fica: sobra um órfão, que é muito melhor que uma peça sem foto.
+ */
+function ehFotoDeCategoria(caminho: string | null): caminho is string {
+  return caminho !== null && caminho.startsWith('categorias/')
+}
+
+/** Apaga do Storage a foto ATUAL da categoria, se ela for mesmo dela. */
+async function limparFotoAnterior(
+  supabase: Awaited<ReturnType<typeof exigirSessao>>,
+  id: string,
+) {
+  const { data } = await supabase
+    .from('categorias')
+    .select('imagem_url')
+    .eq('id', id)
+    .maybeSingle()
+
+  const anterior = (data?.imagem_url as string | null) ?? null
+  if (!anterior) return
+
+  const caminho = caminhoNoBucket(anterior)
+  if (ehFotoDeCategoria(caminho)) {
+    await supabase.storage.from('fotos').remove([caminho])
+  }
+}
+
+export async function renomearCategoria(id: string, nome: string) {
+  const supabase = await exigirSessao()
+
+  const limpo = nome.trim()
+  if (limpo.length < 2) throw new Error('O nome precisa ter ao menos 2 letras.')
+  if (limpo.length > 40) throw new Error('Nome muito longo.')
+
+  const { error } = await supabase
+    .from('categorias')
+    .update({ nome: limpo })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+  atualizarVitrine()
+}
+
+/** Aponta o círculo para uma foto que o navegador acabou de enviar ao Storage. */
+export async function definirFotoCategoria(id: string, url: string) {
+  const supabase = await exigirSessao()
+
+  // Antes de trocar, some com a foto antiga — senão cada troca deixaria um
+  // arquivo abandonado no bucket para sempre.
+  await limparFotoAnterior(supabase, id)
+
+  const { error } = await supabase
+    .from('categorias')
+    .update({ imagem_url: url })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+  atualizarVitrine()
+}
+
+/** Volta o círculo ao selo da marca. */
+export async function removerFotoCategoria(id: string) {
+  const supabase = await exigirSessao()
+
+  await limparFotoAnterior(supabase, id)
+
+  const { error } = await supabase
+    .from('categorias')
+    .update({ imagem_url: null })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+  atualizarVitrine()
+}
+
+/** Reordena os círculos da home. A posição no array vira a ordem. */
+export async function reordenarCategorias(idsNaOrdem: string[]) {
+  const supabase = await exigirSessao()
+
+  await Promise.all(
+    idsNaOrdem.map((id, ordem) =>
+      supabase.from('categorias').update({ ordem }).eq('id', id),
     ),
   )
   atualizarVitrine()

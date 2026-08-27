@@ -87,6 +87,31 @@ export async function buscarPorId(id: string): Promise<Produto | undefined> {
   return data ? converter(data as LinhaProduto) : undefined
 }
 
+/** Categoria como o painel precisa dela: com a ordem, que a loja não usa. */
+export interface CategoriaAdmin {
+  id: string
+  nome: string
+  /** URL da foto do círculo. Vazio = o site mostra o selo da marca. */
+  imagem: string
+  ordem: number
+}
+
+export async function listarCategoriasAdmin(): Promise<CategoriaAdmin[]> {
+  const supabase = await criarClienteServidor()
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('id, nome, imagem_url, ordem')
+    .order('ordem', { ascending: true })
+
+  if (error) throw new Error(`Falha ao carregar as categorias: ${error.message}`)
+  return (data ?? []).map((c) => ({
+    id: c.id as string,
+    nome: c.nome as string,
+    imagem: (c.imagem_url as string | null) ?? '',
+    ordem: c.ordem as number,
+  }))
+}
+
 /**
  * Sugere o próximo código livre da categoria. Ex.: se existe ANL-112,
  * devolve ANL-113. Poupa a dona da loja de conferir a lista toda vez.

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { loja } from '@/config/loja'
 import { sair } from '@/app/admin/acoes'
+import { NavPainel } from '@/components/admin/NavPainel'
 
 export const metadata: Metadata = {
   title: { default: 'Painel', template: '%s · Painel' },
@@ -27,11 +28,13 @@ export default function LayoutAdmin({ children }: { children: React.ReactNode })
             </span>
           </Link>
 
+          <NavPainel />
+
           <div className="flex items-center gap-4">
             <Link
               href="/"
               target="_blank"
-              className="font-rotulo text-[11px] tracking-[0.1em] text-roxo uppercase transition-colors hover:text-dourado"
+              className="font-rotulo text-[11px] tracking-[0.1em] text-roxo uppercase transition-colors hover:text-dourado max-sm:hidden"
             >
               Ver a loja
             </Link>
