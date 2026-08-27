@@ -1,58 +1,78 @@
 -- =============================================================================
---  Anastácia Semijoias — apagar o catálogo para recomeçar do zero
+--  Anastácia Semijoias — apagar as peças de exemplo e começar o estoque do zero
 --
 --  ⚠️  NÃO TEM DESFAZER. Leia antes de rodar.
 --
 --  COMO USAR: painel do Supabase -> SQL Editor -> cole -> Run.
 --
---  O que este script APAGA:
---    - todas as peças (tabela produtos)
---    - todas as fotos ligadas a elas (tabela produto_fotos, por cascata)
+--  Objetivo: remover as 14 peças de exemplo que vieram do seed.sql, PRESERVANDO
+--  as peças cadastradas por você pelo painel.
 --
---  O que este script NÃO apaga:
+--  O que NÃO é tocado:
+--    - as peças que você cadastrou (e as fotos delas)
 --    - as categorias (os círculos da home continuam funcionando)
 --    - o seu usuário de acesso ao painel
---    - os ARQUIVOS de foto guardados no Storage (ver o passo 2 no fim)
 -- =============================================================================
 
 
 -- -----------------------------------------------------------------------------
--- PASSO 0 — confira o que vai sumir ANTES de apagar
+-- PASSO 1 — confira o que vai sumir ANTES de apagar
 --
--- Rode só esta consulta primeiro. Ela mostra tudo, inclusive as peças
--- desligadas, que não aparecem no site.
+-- Rode só esta consulta primeiro. Ela marca cada peça com o que vai acontecer,
+-- e mostra também as desligadas, que não aparecem no site.
 -- -----------------------------------------------------------------------------
 
-select codigo, nome, ativo, criado_em
+select
+  case when criado_em < '2026-08-23' then '>>> APAGA' else 'preserva' end as acao,
+  codigo,
+  nome,
+  ativo,
+  criado_em
 from produtos
-order by criado_em desc;
+order by criado_em;
+
+-- Confira na saída: tudo que estiver como '>>> APAGA' são as peças de exemplo.
+-- O que você cadastrou deve aparecer como 'preserva'. Se não bater, PARE e
+-- ajuste a data abaixo antes de continuar.
 
 
 -- -----------------------------------------------------------------------------
--- PASSO 1 — apagar
+-- PASSO 2 — apagar
 --
--- Escolha UMA das duas opções abaixo e rode só ela.
+-- O corte é por data de cadastro: o seed entrou todo no mesmo instante
+-- (22/08/2026), e tudo que você criou pelo painel veio depois. Assim qualquer
+-- peça sua é preservada, inclusive as que estiverem desligadas.
 -- -----------------------------------------------------------------------------
 
--- OPÇÃO A — apagar absolutamente tudo:
-
-delete from produtos;
-
--- OPÇÃO B — apagar só as peças que vieram do seed, preservando as que você
--- cadastrou pelo painel. Troque a data se precisar; o seed original entrou
--- todo no mesmo instante, então esta linha separa uma coisa da outra.
---
--- delete from produtos where criado_em < '2026-08-23';
+delete from produtos
+where criado_em < '2026-08-23';
 
 
 -- -----------------------------------------------------------------------------
--- PASSO 2 — limpar as fotos do Storage (manual, no painel)
---
--- Apagar as linhas do banco NÃO apaga os arquivos de imagem. Eles ficam
--- ocupando espaço sem nenhuma peça apontando para eles.
---
--- No painel do Supabase: Storage -> bucket "fotos" -> selecionar tudo -> Delete.
---
--- Feito isso, o catálogo está zerado e pronto para você cadastrar as peças
--- de verdade pelo painel, em /admin.
+-- PASSO 3 — confira o resultado
 -- -----------------------------------------------------------------------------
+
+select codigo, nome, ativo from produtos order by criado_em;
+
+-- Devem sobrar apenas as suas peças.
+
+
+-- =============================================================================
+--  Nota sobre as fotos
+--
+--  As peças de exemplo não têm nenhuma foto no Storage, então apagá-las não
+--  deixa arquivo órfão — não há nada a limpar no bucket "fotos".
+--
+--  NÃO apague o bucket: as fotos que estão lá pertencem às SUAS peças.
+-- =============================================================================
+
+
+-- =============================================================================
+--  Alternativa: apagar absolutamente tudo, inclusive as suas peças
+--
+--  Só use se quiser zerar mesmo. Neste caso as fotos das suas peças ficam
+--  órfãs no Storage e precisam ser removidas à mão:
+--  painel -> Storage -> bucket "fotos" -> selecionar -> Delete.
+--
+--  delete from produtos;
+-- =============================================================================
