@@ -261,8 +261,46 @@ export async function reordenarCategorias(idsNaOrdem: string[]) {
   atualizarVitrine()
 }
 
+export async function salvarConfigFrete(dados: {
+  sp: number
+  foraSp: number
+}): Promise<Resultado> {
+  let supabase
+  try {
+    supabase = await exigirSessao()
+  } catch {
+    return { ok: false, erro: 'Sua sessão expirou. Entre novamente.' }
+  }
+
+  const sp = Number(dados.sp)
+  const foraSp = Number(dados.foraSp)
+
+  if (!Number.isFinite(sp) || sp < 0) {
+    return { ok: false, erro: 'Informe um valor válido para o frete de São Paulo.' }
+  }
+  if (!Number.isFinite(foraSp) || foraSp < 0) {
+    return { ok: false, erro: 'Informe um valor válido para o frete Fora de SP.' }
+  }
+
+  const { error } = await supabase
+    .from('configuracoes')
+    .upsert({
+      chave: 'frete',
+      valor: { sp, foraSp },
+    })
+
+  if (error) {
+    return { ok: false, erro: `Não foi possível salvar: ${error.message}` }
+  }
+
+  revalidatePath('/selecao')
+  revalidatePath('/admin/frete')
+  return { ok: true, id: 'frete', slug: 'frete' }
+}
+
 export async function sair() {
   const supabase = await criarClienteServidor()
   await supabase.auth.signOut()
   revalidatePath('/admin')
 }
+

@@ -37,9 +37,19 @@ export function montarMensagemPedido(
 
   if (dados.nome.trim()) {
     linhas.push(`*Cliente:* ${dados.nome.trim()}`)
-    linhas.push('')
   }
 
+  if (dados.endereco && dados.endereco.cep) {
+    const end = dados.endereco
+    linhas.push(`*CEP:* ${end.cep} (${end.cidade} - ${end.estado})`)
+    if (end.logradouro.trim()) {
+      const complementoStr = end.complemento?.trim() ? `, ${end.complemento.trim()}` : ''
+      const bairroStr = end.bairro.trim() ? ` - ${end.bairro.trim()}` : ''
+      linhas.push(`*Endereço:* ${end.logradouro.trim()}, ${end.numero.trim() || 'S/N'}${complementoStr}${bairroStr}`)
+    }
+  }
+
+  linhas.push('')
   linhas.push('*Peças selecionadas:*')
   itens.forEach((item, indice) => {
     linhas.push(`${indice + 1}. ${item.nome} (${item.codigo})`)
@@ -49,9 +59,20 @@ export function montarMensagemPedido(
     )
   })
 
+  const subtotal = totalPedido(itens)
   linhas.push('')
-  linhas.push(`*Total estimado:* ${fmtMoeda(totalPedido(itens))}`)
-  linhas.push(`*Peças:* ${totalPecas(itens)}`)
+  linhas.push(`*Subtotal das peças:* ${fmtMoeda(subtotal)}`)
+
+  if (typeof dados.valorFrete === 'number' && dados.valorFrete >= 0) {
+    const regiao = dados.tipoFrete === 'sp' ? 'São Paulo - SP' : 'Fora de SP'
+    linhas.push(`*Frete fixo (${regiao}):* ${fmtMoeda(dados.valorFrete)}`)
+    linhas.push(`*Total estimado:* ${fmtMoeda(subtotal + dados.valorFrete)}`)
+  } else {
+    linhas.push('*Frete:* A calcular / confirmar no WhatsApp')
+    linhas.push(`*Total estimado:* ${fmtMoeda(subtotal)}`)
+  }
+
+  linhas.push(`*Total de peças:* ${totalPecas(itens)}`)
 
   if (dados.observacoes.trim()) {
     linhas.push('')

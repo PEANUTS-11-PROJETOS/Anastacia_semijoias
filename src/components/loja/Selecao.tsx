@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { loja } from '@/config/loja'
+import { fretePadrao, loja } from '@/config/loja'
 import { useCarrinho } from '@/stores/carrinho'
 import { useMontado } from '@/hooks/useMontado'
 import {
@@ -13,9 +13,19 @@ import {
   totalPedido,
 } from '@/lib/whatsapp'
 import { fmtMoeda } from '@/lib/utils'
+import { consultarCep } from '@/lib/frete'
+import type { ConfigFrete, DadosPedido } from '@/types'
 import { FotoProduto } from '@/components/loja/FotoProduto'
 import { ControleQuantidade } from '@/components/loja/ControleQuantidade'
-import { IconeMais, IconeSacola, IconeFechar, IconeWhatsApp } from '@/components/ui/Icones'
+import {
+  IconeMais,
+  IconeSacola,
+  IconeFechar,
+  IconeWhatsApp,
+  IconeCaminhao,
+  IconeLocalizacao,
+  IconeVerificado,
+} from '@/components/ui/Icones'
 
 const NUMERO_EXEMPLO = '5500000000000'
 
@@ -25,13 +35,84 @@ const etapas = [
   { numero: 3, rotulo: 'WhatsApp' },
 ]
 
-export function Selecao() {
+interface Props {
+  configFrete?: ConfigFrete
+}
+
+export function Selecao({ configFrete = fretePadrao }: Props) {
   const montado = useMontado()
   const { itens, remover, alterarQuantidade, limpar } = useCarrinho()
 
   const [nome, setNome] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [verPrevia, setVerPrevia] = useState(false)
+
+  // Endereço e Frete
+  const [cep, setCep] = useState('')
+  const [logradouro, setLogradouro] = useState('')
+  const [numero, setNumero] = useState('')
+  const [complemento, setComplemento] = useState('')
+  const [bairro, setBairro] = useState('')
+  const [cidade, setCidade] = useState('')
+  const [estado, setEstado] = useState('')
+  const [buscandoCep, setBuscandoCep] = useState(false)
+  const [erroCep, setErroCep] = useState<string | null>(null)
+  const [freteCalculado, setFreteCalculado] = useState<{
+    valor: number
+    tipo: 'sp' | 'fora_sp'
+    regiao: string
+  } | null>(null)
+
+  function formatarCep(valor: string): string {
+    const digitos = valor.replace(/\D/g, '').slice(0, 8)
+    if (digitos.length <= 5) return digitos
+    return `${digitos.slice(0, 5)}-${digitos.slice(5)}`
+  }
+
+  async function executarBuscaCep(cepParaBuscar: string) {
+    const digitos = cepParaBuscar.replace(/\D/g, '')
+    if (digitos.length !== 8) {
+      setErroCep('Digite o CEP completo com 8 números.')
+      return
+    }
+
+    setBuscandoCep(true)
+    setErroCep(null)
+
+    const resultado = await consultarCep(digitos)
+    setBuscandoCep(false)
+
+    if (!resultado.ok) {
+      setErroCep(resultado.erro)
+      setFreteCalculado(null)
+      return
+    }
+
+    setLogradouro(resultado.logradouro)
+    setBairro(resultado.bairro)
+    setCidade(resultado.cidade)
+    setEstado(resultado.estado)
+
+    const ehSp = resultado.ehSp
+    const valor = ehSp ? configFrete.sp : configFrete.foraSp
+    const tipo = ehSp ? 'sp' : 'fora_sp'
+    const regiao = ehSp ? 'São Paulo (SP)' : `${resultado.cidade} - ${resultado.estado} (Fora de SP)`
+
+    setFreteCalculado({ valor, tipo, regiao })
+  }
+
+  function aoDigitarCep(e: React.ChangeEvent<HTMLInputElement>) {
+    const formatado = formatarCep(e.target.value)
+    setCep(formatado)
+
+    const digitos = formatado.replace(/\D/g, '')
+    if (digitos.length === 8) {
+      executarBuscaCep(digitos)
+    } else if (digitos.length < 8) {
+      setFreteCalculado(null)
+      setErroCep(null)
+    }
+  }
 
   /* Enquanto o localStorage não foi lido, não dá para saber se há itens. */
   if (!montado) {
@@ -59,8 +140,26 @@ export function Selecao() {
     )
   }
 
-  const dados = { nome, observacoes }
-  const total = totalPedido(itens)
+  const dados: DadosPedido = {
+    nome,
+    observacoes,
+    endereco: cep.trim()
+      ? {
+          cep: cep.trim(),
+          logradouro: logradouro.trim(),
+          numero: numero.trim(),
+          complemento: complemento.trim() || undefined,
+          bairro: bairro.trim(),
+          cidade: cidade.trim(),
+          estado: estado.trim(),
+        }
+      : undefined,
+    valorFrete: freteCalculado ? freteCalculado.valor : undefined,
+    tipoFrete: freteCalculado ? freteCalculado.tipo : undefined,
+  }
+
+  const subtotal = totalPedido(itens)
+  const total = subtotal + (freteCalculado?.valor ?? 0)
   const pecas = totalPecas(itens)
   const numeroFaltando = loja.whatsapp === NUMERO_EXEMPLO
 
@@ -94,8 +193,8 @@ export function Selecao() {
       <div className="mb-8 text-center lg:mb-12">
         <h1 className="mb-3 font-serifada text-3xl text-tinta lg:text-5xl">Sua seleção</h1>
         <p className="mx-auto max-w-130 text-[15px] leading-relaxed text-tinta-media">
-          Revise as peças escolhidas. Ao enviar, o pedido chega pronto no WhatsApp de{' '}
-          {loja.consultora}, que finaliza a compra com você.
+          Revise as peças escolhidas e informe seu endereço para calcularmos a taxa fixa de entrega.
+          Ao enviar, o pedido chega pronto no WhatsApp de {loja.consultora}.
         </p>
       </div>
 
@@ -167,15 +266,16 @@ export function Selecao() {
           </div>
         </div>
 
-        {/* Resumo do pedido */}
-        <div className="min-w-70 flex-1 basis-80 lg:sticky lg:top-24 lg:max-w-100">
+        {/* Resumo do pedido e Endereço */}
+        <div className="min-w-70 flex-1 basis-80 lg:sticky lg:top-24 lg:max-w-105">
           <div className="rounded-2xl border border-dourado/30 bg-white p-6 shadow-[0_20px_50px_-30px_rgba(51,36,63,0.4)] lg:p-8">
             <h2 className="mb-5 border-b border-roxo/12 pb-4 font-serifada text-2xl text-tinta">
               Detalhes do pedido
             </h2>
 
-            <div className="mb-6 flex flex-col gap-4.5">
-              <label className="flex flex-col gap-2">
+            <div className="mb-6 flex flex-col gap-5">
+              {/* Nome */}
+              <label className="flex flex-col gap-1.5">
                 <span className="font-rotulo text-[11px] tracking-[0.14em] text-tinta-suave uppercase">
                   Seu nome
                 </span>
@@ -188,30 +288,130 @@ export function Selecao() {
                 />
               </label>
 
-              <label className="flex flex-col gap-2">
+              {/* Bloco de Frete e Endereço */}
+              <div className="flex flex-col gap-3 rounded-xl border border-roxo/12 bg-white p-4 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <IconeCaminhao className="h-5 w-5 text-dourado" />
+                  <span className="font-rotulo text-[11px] font-semibold tracking-[0.14em] text-tinta uppercase">
+                    Entrega & Frete Fixo
+                  </span>
+                </div>
+
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={cep}
+                      onChange={aoDigitarCep}
+                      placeholder="CEP (ex: 01310-100)"
+                      maxLength={9}
+                      className="w-full rounded-lg border border-roxo/18 bg-lilas-claro px-3.5 py-2.5 font-corpo text-[14px] text-tinta placeholder:text-tinta-clara"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => executarBuscaCep(cep)}
+                    disabled={buscandoCep}
+                    className="rounded-lg bg-roxo/10 px-4 py-2.5 font-rotulo text-[11px] font-semibold tracking-[0.1em] text-roxo uppercase transition-colors hover:bg-roxo/20 disabled:opacity-50"
+                  >
+                    {buscandoCep ? 'Buscando…' : 'Buscar'}
+                  </button>
+                </div>
+
+                {erroCep && (
+                  <p role="alert" className="text-[12px] text-[#BA1A1A]">
+                    {erroCep}
+                  </p>
+                )}
+
+                {/* Retorno de Frete Calculado */}
+                {freteCalculado && (
+                  <div className="animar-subir flex items-center justify-between rounded-lg bg-[#1fa855]/10 p-3 text-[13px] text-[#17864a]">
+                    <span className="flex items-center gap-2 font-medium">
+                      <IconeVerificado className="h-4.5 w-4.5 text-[#1fa855]" />
+                      Frete {freteCalculado.tipo === 'sp' ? 'SP' : 'Fora de SP'}
+                    </span>
+                    <span className="font-serifada text-[15px] font-bold">
+                      {fmtMoeda(freteCalculado.valor)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Campos adicionais de endereço quando o CEP é preenchido */}
+                {cidade && estado && (
+                  <div className="animar-subir mt-1 flex flex-col gap-2.5 border-t border-roxo/8 pt-3 text-[13px]">
+                    <div className="flex items-center gap-1.5 text-tinta-media">
+                      <IconeLocalizacao className="h-4 w-4 text-dourado shrink-0" />
+                      <span className="font-medium text-tinta">{cidade} - {estado}</span>
+                      {bairro && <span className="text-tinta-suave">({bairro})</span>}
+                    </div>
+
+                    <input
+                      type="text"
+                      value={logradouro}
+                      onChange={(e) => setLogradouro(e.target.value)}
+                      placeholder="Rua / Avenida"
+                      className="w-full rounded-lg border border-roxo/18 bg-lilas-claro px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-clara"
+                    />
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        value={numero}
+                        onChange={(e) => setNumero(e.target.value)}
+                        placeholder="Número (ex: 120)"
+                        className="rounded-lg border border-roxo/18 bg-lilas-claro px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-clara"
+                      />
+                      <input
+                        type="text"
+                        value={complemento}
+                        onChange={(e) => setComplemento(e.target.value)}
+                        placeholder="Apto / Bloco (opcional)"
+                        className="rounded-lg border border-roxo/18 bg-lilas-claro px-3 py-2 text-[13px] text-tinta placeholder:text-tinta-clara"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Observações */}
+              <label className="flex flex-col gap-1.5">
                 <span className="font-rotulo text-[11px] tracking-[0.14em] text-tinta-suave uppercase">
                   Observações (opcional)
                 </span>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={observacoes}
                   onChange={(evento) => setObservacoes(evento.target.value)}
                   placeholder="Ex.: é para presente, preciso de embalagem especial"
-                  className="resize-none rounded-lg border border-roxo/18 bg-lilas-claro px-3.5 py-3 font-corpo text-[15px] text-tinta placeholder:text-tinta-clara"
+                  className="resize-none rounded-lg border border-roxo/18 bg-lilas-claro px-3.5 py-2.5 font-corpo text-[14px] text-tinta placeholder:text-tinta-clara"
                 />
               </label>
             </div>
 
-            <div className="mb-5 flex flex-col gap-2 border-t border-roxo/12 pt-4.5">
-              <div className="flex items-baseline justify-between text-[15px] text-tinta-media">
-                <span>
-                  {pecas} {pecas === 1 ? 'peça' : 'peças'}
-                </span>
-                <span>{fmtMoeda(total)}</span>
+            {/* Resumo financeiro */}
+            <div className="mb-5 flex flex-col gap-2.5 border-t border-roxo/12 pt-4.5">
+              <div className="flex items-baseline justify-between text-[14px] text-tinta-media">
+                <span>Subtotal ({pecas} {pecas === 1 ? 'peça' : 'peças'})</span>
+                <span>{fmtMoeda(subtotal)}</span>
               </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-[15px] text-tinta-media">Total estimado</span>
-                <span className="font-serifada text-2xl text-tinta">{fmtMoeda(total)}</span>
+
+              <div className="flex items-baseline justify-between text-[14px] text-tinta-media">
+                <span>Frete fixo</span>
+                <span>
+                  {freteCalculado ? (
+                    <span className="font-semibold text-tinta">
+                      {fmtMoeda(freteCalculado.valor)}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-tinta-suave">A calcular pelo CEP</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="flex items-baseline justify-between border-t border-roxo/8 pt-2">
+                <span className="font-medium text-[15px] text-tinta">Total estimado</span>
+                <span className="font-serifada text-2xl text-roxo">{fmtMoeda(total)}</span>
               </div>
             </div>
 
@@ -231,15 +431,15 @@ export function Selecao() {
               href={linkPedido(itens, dados)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-zap px-6 py-4 font-rotulo text-sm tracking-[0.08em] text-white uppercase transition-colors hover:bg-zap-escuro"
+              className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-zap px-6 py-4 font-rotulo text-sm tracking-[0.08em] text-white uppercase transition-colors hover:bg-zap-escuro shadow-[0_12px_24px_-10px_rgba(31,168,85,0.4)]"
             >
               <IconeWhatsApp className="h-5.5 w-5.5" />
               Enviar para {loja.consultora}
             </a>
 
             <p className="mt-3.5 text-center text-xs text-tinta-clara">
-              Você será direcionada ao WhatsApp com o pedido já escrito. Nada é cobrado
-              aqui.
+              Você será direcionada ao WhatsApp com o pedido e endereço já escritos. Nada é cobrado
+              aqui no site.
             </p>
 
             <button
@@ -262,3 +462,4 @@ export function Selecao() {
     </div>
   )
 }
+

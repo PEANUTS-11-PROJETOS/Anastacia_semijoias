@@ -43,3 +43,12 @@ export const banhos = {
   ouro18k: { nome: 'Ouro 18k', cor: '#D4AF37' },
   rodio: { nome: 'Ródio branco', cor: '#E2E8F0' },
 } as const
+
+/** Valores padrão de frete caso não haja valor customizado no banco de dados. */
+export const fretePadrao = {
+  /** Frete fixo para o estado de São Paulo (SP) em reais. */
+  sp: 15.0,
+  /** Frete fixo para fora de São Paulo (demais estados do Brasil) em reais. */
+  foraSp: 25.0,
+} as const
+

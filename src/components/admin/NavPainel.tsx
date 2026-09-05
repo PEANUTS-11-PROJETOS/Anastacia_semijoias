@@ -14,10 +14,13 @@ import { cn } from '@/lib/utils'
 export function NavPainel() {
   const caminho = usePathname()
   const emCategorias = caminho.startsWith('/admin/categorias')
+  const emFrete = caminho.startsWith('/admin/frete')
+  const emPecas = !emCategorias && !emFrete
 
   const abas = [
-    { href: '/admin', rotulo: 'Peças', ativa: !emCategorias },
+    { href: '/admin', rotulo: 'Peças', ativa: emPecas },
     { href: '/admin/categorias', rotulo: 'Categorias', ativa: emCategorias },
+    { href: '/admin/frete', rotulo: 'Frete', ativa: emFrete },
   ]
 
   return (

@@ -45,6 +45,12 @@ create table if not exists produto_fotos (
   ordem      int  not null default 0           -- 0 = foto de capa
 );
 
+create table if not exists configuracoes (
+  chave         text primary key,
+  valor         jsonb not null,
+  atualizado_em timestamptz not null default now()
+);
+
 create index if not exists produtos_categoria_idx on produtos (categoria_id);
 create index if not exists produtos_ativo_idx     on produtos (ativo);
 create index if not exists fotos_produto_idx      on produto_fotos (produto_id, ordem);
@@ -62,6 +68,16 @@ create trigger produtos_atualizado_em
   before update on produtos
   for each row execute function tocar_atualizado_em();
 
+drop trigger if exists configuracoes_atualizado_em on configuracoes;
+create trigger configuracoes_atualizado_em
+  before update on configuracoes
+  for each row execute function tocar_atualizado_em();
+
+-- Configuração inicial de frete fixo
+insert into configuracoes (chave, valor)
+values ('frete', '{"sp": 15.00, "foraSp": 25.00}'::jsonb)
+on conflict (chave) do nothing;
+
 -- -----------------------------------------------------------------------------
 -- Permissões da API
 -- Explícitas de propósito: assim o script funciona mesmo que a opção
@@ -69,14 +85,14 @@ create trigger produtos_atualizado_em
 -- -----------------------------------------------------------------------------
 
 grant usage on schema public to anon, authenticated;
-grant select on categorias, produtos, produto_fotos to anon, authenticated;
-grant insert, update, delete on categorias, produtos, produto_fotos to authenticated;
+grant select on categorias, produtos, produto_fotos, configuracoes to anon, authenticated;
+grant insert, update, delete on categorias, produtos, produto_fotos, configuracoes to authenticated;
 
 -- Defesa em profundidade: o visitante não deve nem ter o direito de escrita, para
 -- que uma tentativa seja recusada já na permissão, antes de chegar ao RLS.
 -- (O Supabase concede tudo por padrão quando "Automatically expose new tables"
 -- está ligado; sem este revoke, o RLS ficaria sendo a única barreira.)
-revoke insert, update, delete on categorias, produtos, produto_fotos from anon;
+revoke insert, update, delete on categorias, produtos, produto_fotos, configuracoes from anon;
 
 -- -----------------------------------------------------------------------------
 -- Row Level Security
@@ -88,6 +104,20 @@ revoke insert, update, delete on categorias, produtos, produto_fotos from anon;
 alter table categorias    enable row level security;
 alter table produtos      enable row level security;
 alter table produto_fotos enable row level security;
+alter table configuracoes enable row level security;
+
+-- Configurações: qualquer um lê; só quem está logado altera.
+drop policy if exists "configuracoes leitura publica" on configuracoes;
+create policy "configuracoes leitura publica"
+  on configuracoes for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "configuracoes escrita autenticada" on configuracoes;
+create policy "configuracoes escrita autenticada"
+  on configuracoes for all
+  to authenticated
+  using (true) with check (true);
 
 -- Categorias: qualquer um lê; só quem está logado altera.
 drop policy if exists "categorias leitura publica" on categorias;
