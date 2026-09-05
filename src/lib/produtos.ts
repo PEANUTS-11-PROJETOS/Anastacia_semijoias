@@ -75,7 +75,7 @@ export async function listarProdutos(): Promise<Produto[]> {
       .order('criado_em', { ascending: true })
 
     if (error) throw error
-    if (!data || data.length === 0) return produtosFallback
+    if (!data) return []
     return (data as LinhaProduto[]).map(converter)
   } catch (err) {
     console.warn('Usando produtos locais (fallback):', (err as Error)?.message || err)
@@ -111,7 +111,7 @@ export async function buscarPorSlug(slug: string): Promise<Produto | undefined> 
 
     if (error) throw error
     if (data) return converter(data as LinhaProduto)
-    return produtosFallback.find((p) => p.slug === slug)
+    return undefined
   } catch (err) {
     console.warn(`Usando busca por slug local para "${slug}":`, (err as Error)?.message || err)
     return produtosFallback.find((p) => p.slug === slug)
@@ -129,10 +129,7 @@ export async function produtosPorCategoria(categoria?: string): Promise<Produto[
 
     const { data, error } = await consulta.order('criado_em', { ascending: true })
     if (error) throw error
-    if (!data || data.length === 0) {
-      if (!categoria || categoria === 'todas') return produtosFallback
-      return produtosFallback.filter((p) => p.categoria === categoria)
-    }
+    if (!data) return []
     return (data as LinhaProduto[]).map(converter)
   } catch (err) {
     console.warn(`Usando categoria local para "${categoria}":`, (err as Error)?.message || err)
@@ -157,7 +154,7 @@ export async function listarCategorias(): Promise<Categoria[]> {
       .order('ordem', { ascending: true })
 
     if (error) throw error
-    if (!data || data.length === 0) return categoriasFallback
+    if (!data) return []
     return (data ?? []).map((c) => ({
       id: c.id as string,
       nome: c.nome as string,
