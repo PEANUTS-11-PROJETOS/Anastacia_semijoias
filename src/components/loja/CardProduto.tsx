@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { banhos as rotulosBanho } from '@/config/loja'
 import { useCarrinho } from '@/stores/carrinho'
-import { fmtMoeda } from '@/lib/utils'
+import { cn, fmtMoeda } from '@/lib/utils'
 import type { Produto } from '@/types'
 import { FotoProduto } from '@/components/loja/FotoProduto'
 import { IconeMais, IconeSeta } from '@/components/ui/Icones'
@@ -24,11 +24,15 @@ export function CardProduto({ produto, prioridade = false }: Props) {
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-roxo/10 bg-white shadow-[0_1px_3px_rgba(51,36,63,0.05)] transition-shadow hover:shadow-[0_18px_40px_-24px_rgba(51,36,63,0.45)]">
-      {produto.selo && (
+      {produto.esgotado ? (
+        <span className="absolute top-3.5 left-3.5 z-10 rounded-full bg-tinta/85 px-2.5 py-1 font-rotulo text-[9px] tracking-[0.18em] text-white uppercase backdrop-blur-sm">
+          Esgotado
+        </span>
+      ) : produto.selo ? (
         <span className="absolute top-3.5 left-3.5 z-10 rounded-full bg-roxo px-2.5 py-1 font-rotulo text-[9px] tracking-[0.18em] text-white uppercase">
           {produto.selo}
         </span>
-      )}
+      ) : null}
 
       <Link
         href={`/pecas/${produto.slug}`}
@@ -38,7 +42,10 @@ export function CardProduto({ produto, prioridade = false }: Props) {
           imagem={produto.fotos[0]?.url ?? ''}
           alt={produto.nome}
           prioridade={prioridade}
-          className="transition-transform duration-500 group-hover:scale-105"
+          className={cn(
+            'transition-transform duration-500 group-hover:scale-105',
+            produto.esgotado && 'opacity-75 grayscale-[25%]',
+          )}
         />
       </Link>
 
@@ -69,11 +76,20 @@ export function CardProduto({ produto, prioridade = false }: Props) {
             </span>
           </span>
 
-          {escolher ? (
+          {produto.esgotado || escolher ? (
             <Link
               href={`/pecas/${produto.slug}`}
-              aria-label={`Escolher opções de ${produto.nome}`}
-              className="flex h-10.5 w-10.5 items-center justify-center rounded-full bg-roxo text-white transition-colors hover:bg-roxo-escuro"
+              aria-label={
+                produto.esgotado
+                  ? `Ver detalhes de ${produto.nome} (esgotado)`
+                  : `Escolher opções de ${produto.nome}`
+              }
+              className={cn(
+                'flex h-10.5 w-10.5 items-center justify-center rounded-full text-white transition-colors',
+                produto.esgotado
+                  ? 'bg-tinta/50 hover:bg-tinta/80'
+                  : 'bg-roxo hover:bg-roxo-escuro',
+              )}
             >
               <IconeSeta className="h-5 w-5" />
             </Link>
@@ -92,3 +108,4 @@ export function CardProduto({ produto, prioridade = false }: Props) {
     </article>
   )
 }
+

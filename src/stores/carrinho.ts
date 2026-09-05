@@ -32,6 +32,8 @@ export const useCarrinho = create<EstadoCarrinho>()(
 
       adicionar: (produto, { banho, quantidade = 1 }) =>
         set((estado) => {
+          if (produto.esgotado) return estado
+
           const id = montarId(produto.codigo, banho)
           const existente = estado.itens.find((item) => item.id === id)
 

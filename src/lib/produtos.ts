@@ -1,21 +1,13 @@
 import { criarClientePublico } from '@/lib/supabase/publico'
 import type { BanhoId, Categoria, Produto } from '@/types'
+import { categoriasFallback, produtosFallback } from '@/data/fallback'
 
 /**
  * Leitura do catálogo.
  *
- * Substitui o antigo src/data/produtos.ts. Os nomes das funções foram mantidos
- * para que as páginas continuassem iguais — a única diferença é que agora são
- * assíncronas.
- *
- * Quem filtra peça desligada é o RLS do banco, não este arquivo: o visitante
- * simplesmente não recebe as linhas com ativo = false.
- *
- * Usa de propósito o client SEM cookies. O catálogo é público e igual para
- * todo mundo, então ler a sessão só serviria para tornar toda página dinâmica
- * e obrigar uma consulta ao banco a cada visita. Sem cookies, o Next consegue
- * gerar as páginas antecipadamente e revalidar de tempos em tempos.
- * O painel /admin, que precisa enxergar peça desligada, usa o client com sessão.
+ * Busca do Supabase e, caso o banco esteja inacessível (ex: projeto pausado ou
+ * sem internet), utiliza os dados locais de fallback para manter o catálogo
+ * navegável.
  */
 
 /** Formato cru vindo do Postgres (snake_case). */
@@ -75,14 +67,20 @@ function converter(linha: LinhaProduto): Produto {
 }
 
 export async function listarProdutos(): Promise<Produto[]> {
-  const supabase = criarClientePublico()
-  const { data, error } = await supabase
-    .from('produtos')
-    .select(CAMPOS)
-    .order('criado_em', { ascending: true })
+  try {
+    const supabase = criarClientePublico()
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(CAMPOS)
+      .order('criado_em', { ascending: true })
 
-  if (error) throw new Error(`Falha ao listar peças: ${error.message}`)
-  return (data as LinhaProduto[]).map(converter)
+    if (error) throw error
+    if (!data || data.length === 0) return produtosFallback
+    return (data as LinhaProduto[]).map(converter)
+  } catch (err) {
+    console.warn('Usando produtos locais (fallback):', (err as Error)?.message || err)
+    return produtosFallback
+  }
 }
 
 /**
@@ -90,41 +88,57 @@ export async function listarProdutos(): Promise<Produto[]> {
  * Usa o client sem cookies porque roda no build, fora de qualquer requisição.
  */
 export async function listarSlugs(): Promise<string[]> {
-  const supabase = criarClientePublico()
-  const { data, error } = await supabase.from('produtos').select('slug')
+  try {
+    const supabase = criarClientePublico()
+    const { data, error } = await supabase.from('produtos').select('slug')
 
-  if (error) {
-    // Não vale derrubar o build inteiro por isso: sem a lista, as páginas
-    // passam a ser geradas sob demanda na primeira visita.
-    console.warn(`Não foi possível pré-gerar as páginas das peças: ${error.message}`)
-    return []
+    if (error) throw error
+    return (data ?? []).map((linha) => linha.slug as string)
+  } catch (err) {
+    console.warn('Usando slugs locais (fallback):', (err as Error)?.message || err)
+    return produtosFallback.map((p) => p.slug)
   }
-  return data.map((linha) => linha.slug as string)
 }
 
 export async function buscarPorSlug(slug: string): Promise<Produto | undefined> {
-  const supabase = criarClientePublico()
-  const { data, error } = await supabase
-    .from('produtos')
-    .select(CAMPOS)
-    .eq('slug', slug)
-    .maybeSingle()
+  try {
+    const supabase = criarClientePublico()
+    const { data, error } = await supabase
+      .from('produtos')
+      .select(CAMPOS)
+      .eq('slug', slug)
+      .maybeSingle()
 
-  if (error) throw new Error(`Falha ao buscar a peça: ${error.message}`)
-  return data ? converter(data as LinhaProduto) : undefined
+    if (error) throw error
+    if (data) return converter(data as LinhaProduto)
+    return produtosFallback.find((p) => p.slug === slug)
+  } catch (err) {
+    console.warn(`Usando busca por slug local para "${slug}":`, (err as Error)?.message || err)
+    return produtosFallback.find((p) => p.slug === slug)
+  }
 }
 
 export async function produtosPorCategoria(categoria?: string): Promise<Produto[]> {
-  const supabase = criarClientePublico()
-  let consulta = supabase.from('produtos').select(CAMPOS)
+  try {
+    const supabase = criarClientePublico()
+    let consulta = supabase.from('produtos').select(CAMPOS)
 
-  if (categoria && categoria !== 'todas') {
-    consulta = consulta.eq('categoria_id', categoria)
+    if (categoria && categoria !== 'todas') {
+      consulta = consulta.eq('categoria_id', categoria)
+    }
+
+    const { data, error } = await consulta.order('criado_em', { ascending: true })
+    if (error) throw error
+    if (!data || data.length === 0) {
+      if (!categoria || categoria === 'todas') return produtosFallback
+      return produtosFallback.filter((p) => p.categoria === categoria)
+    }
+    return (data as LinhaProduto[]).map(converter)
+  } catch (err) {
+    console.warn(`Usando categoria local para "${categoria}":`, (err as Error)?.message || err)
+    if (!categoria || categoria === 'todas') return produtosFallback
+    return produtosFallback.filter((p) => p.categoria === categoria)
   }
-
-  const { data, error } = await consulta.order('criado_em', { ascending: true })
-  if (error) throw new Error(`Falha ao listar a categoria: ${error.message}`)
-  return (data as LinhaProduto[]).map(converter)
 }
 
 /** Peças marcadas como destaque; se não houver nenhuma, as 6 primeiras. */
@@ -135,18 +149,24 @@ export async function produtosEmDestaque(): Promise<Produto[]> {
 }
 
 export async function listarCategorias(): Promise<Categoria[]> {
-  const supabase = criarClientePublico()
-  const { data, error } = await supabase
-    .from('categorias')
-    .select('id, nome, imagem_url')
-    .order('ordem', { ascending: true })
+  try {
+    const supabase = criarClientePublico()
+    const { data, error } = await supabase
+      .from('categorias')
+      .select('id, nome, imagem_url')
+      .order('ordem', { ascending: true })
 
-  if (error) throw new Error(`Falha ao listar categorias: ${error.message}`)
-  return (data ?? []).map((c) => ({
-    id: c.id as string,
-    nome: c.nome as string,
-    imagem: (c.imagem_url as string | null) ?? '',
-  }))
+    if (error) throw error
+    if (!data || data.length === 0) return categoriasFallback
+    return (data ?? []).map((c) => ({
+      id: c.id as string,
+      nome: c.nome as string,
+      imagem: (c.imagem_url as string | null) ?? '',
+    }))
+  } catch (err) {
+    console.warn('Usando categorias locais (fallback):', (err as Error)?.message || err)
+    return categoriasFallback
+  }
 }
 
 /** Quantas peças em cada categoria, para o contador dos filtros. */
@@ -163,3 +183,4 @@ export async function nomeCategoria(id: string): Promise<string> {
   const categorias = await listarCategorias()
   return categorias.find((c) => c.id === id)?.nome ?? 'Peças'
 }
+

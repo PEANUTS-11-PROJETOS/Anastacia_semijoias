@@ -7,11 +7,10 @@ export const loja = {
   slogan: 'Nosso legado, semijoias para você brilhar.',
 
   /**
-   * ⚠️ TROCAR ANTES DE PUBLICAR ⚠️
    * Número que recebe os pedidos, no formato internacional, só dígitos:
-   * 55 (Brasil) + DDD + número. Ex.: 5531988887777
+   * 55 (Brasil) + DDD + número.
    */
-  whatsapp: '5500000000000' as string,
+  whatsapp: '5511970644324' as string,
 
   /** Nome que aparece nos textos de atendimento. */
   consultora: 'nossa consultora',
