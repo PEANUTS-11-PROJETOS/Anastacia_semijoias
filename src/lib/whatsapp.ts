@@ -32,7 +32,7 @@ export function montarMensagemPedido(
 ): string {
   const linhas: string[] = []
 
-  linhas.push(`*NOVO PEDIDO — ${loja.nome}*`)
+  linhas.push(`*NOVO PEDIDO - ${loja.nome}*`)
   linhas.push('')
 
   if (dados.nome.trim()) {
@@ -80,7 +80,7 @@ export function montarMensagemPedido(
   }
 
   linhas.push('')
-  linhas.push('Enviado pelo site ✨')
+  linhas.push('Enviado pelo site')
 
   return linhas.join('\n')
 }
