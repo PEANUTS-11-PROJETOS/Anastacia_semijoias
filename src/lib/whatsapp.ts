@@ -32,55 +32,60 @@ export function montarMensagemPedido(
 ): string {
   const linhas: string[] = []
 
-  linhas.push(`*NOVO PEDIDO - ${loja.nome}*`)
+  linhas.push(`💎 *NOVO PEDIDO - ${loja.nome.toUpperCase()}*`)
   linhas.push('')
 
   if (dados.nome.trim()) {
-    linhas.push(`*Cliente:* ${dados.nome.trim()}`)
+    linhas.push(`👤 *Cliente:* ${dados.nome.trim()}`)
   }
 
   if (dados.endereco && dados.endereco.cep) {
     const end = dados.endereco
-    linhas.push(`*CEP:* ${end.cep} (${end.cidade} - ${end.estado})`)
+    linhas.push('')
+    linhas.push(`📍 *Endereço de Entrega:*`)
     if (end.logradouro.trim()) {
-      const complementoStr = end.complemento?.trim() ? `, ${end.complemento.trim()}` : ''
-      const bairroStr = end.bairro.trim() ? ` - ${end.bairro.trim()}` : ''
-      linhas.push(`*Endereço:* ${end.logradouro.trim()}, ${end.numero.trim() || 'S/N'}${complementoStr}${bairroStr}`)
+      const compStr = end.complemento?.trim() ? ` (${end.complemento.trim()})` : ''
+      linhas.push(`• ${end.logradouro.trim()}, Nº ${end.numero.trim() || 'S/N'}${compStr}`)
     }
+    if (end.bairro.trim()) {
+      linhas.push(`• Bairro: ${end.bairro.trim()}`)
+    }
+    linhas.push(`• ${end.cidade}/${end.estado} - CEP: ${end.cep}`)
   }
 
   linhas.push('')
-  linhas.push('*Peças selecionadas:*')
+  linhas.push('🛍️ *Peças Selecionadas:*')
   itens.forEach((item, indice) => {
-    linhas.push(`${indice + 1}. ${item.nome} (${item.codigo})`)
-    linhas.push(`   ${descricaoVariacao(item)}`)
+    linhas.push(`${indice + 1}. *${item.nome}* (${item.codigo})`)
+    linhas.push(`   Banho: ${descricaoVariacao(item)}`)
     linhas.push(
-      `   ${item.quantidade} x ${fmtMoeda(item.preco)} = ${fmtMoeda(subtotalItem(item))}`,
+      `   Qtd: ${item.quantidade}x (${fmtMoeda(item.preco)}) = ${fmtMoeda(subtotalItem(item))}`,
     )
   })
 
   const subtotal = totalPedido(itens)
   linhas.push('')
-  linhas.push(`*Subtotal das peças:* ${fmtMoeda(subtotal)}`)
+  linhas.push('💰 *Resumo do Pedido:*')
+  linhas.push(`• Subtotal: ${fmtMoeda(subtotal)}`)
 
   if (typeof dados.valorFrete === 'number' && dados.valorFrete >= 0) {
     const regiao = dados.tipoFrete === 'sp' ? 'São Paulo - SP' : 'Fora de SP'
-    linhas.push(`*Frete fixo (${regiao}):* ${fmtMoeda(dados.valorFrete)}`)
-    linhas.push(`*Total estimado:* ${fmtMoeda(subtotal + dados.valorFrete)}`)
+    linhas.push(`• 📦 Frete (${regiao}): ${fmtMoeda(dados.valorFrete)}`)
+    linhas.push(`• 💳 *Total:* ${fmtMoeda(subtotal + dados.valorFrete)}`)
   } else {
-    linhas.push('*Frete:* A calcular / confirmar no WhatsApp')
-    linhas.push(`*Total estimado:* ${fmtMoeda(subtotal)}`)
+    linhas.push('• 📦 Frete: A combinar')
+    linhas.push(`• 💳 *Total:* ${fmtMoeda(subtotal)}`)
   }
 
-  linhas.push(`*Total de peças:* ${totalPecas(itens)}`)
+  linhas.push(`• Itens: ${totalPecas(itens)} peça(s)`)
 
   if (dados.observacoes.trim()) {
     linhas.push('')
-    linhas.push(`*Observações:* ${dados.observacoes.trim()}`)
+    linhas.push(`📝 *Observações:* ${dados.observacoes.trim()}`)
   }
 
   linhas.push('')
-  linhas.push('Enviado pelo site')
+  linhas.push('Olá! Gostaria de confirmar meu pedido e verificar as opções de pagamento.')
 
   return linhas.join('\n')
 }
@@ -98,6 +103,6 @@ export function linkPedido(itens: ItemCarrinho[], dados: DadosPedido): string {
 /** Link de conversa avulsa, para dúvidas sobre uma peça específica. */
 export function linkDuvidaPeca(nome: string, codigo: string): string {
   return linkWhatsApp(
-    `Olá! Tenho interesse na peça *${nome}* (${codigo}). Pode me contar mais?`,
+    `Olá! Tenho interesse na peça *${nome}* (${codigo}). Gostaria de mais informações! 💎`,
   )
 }
