@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { criarClienteServidor } from '@/lib/supabase/server'
 import { esquemaProduto, validarPrecoDe, type EntradaProduto } from '@/lib/esquemas'
 
@@ -302,5 +303,6 @@ export async function sair() {
   const supabase = await criarClienteServidor()
   await supabase.auth.signOut()
   revalidatePath('/admin')
+  redirect('/login')
 }
 
