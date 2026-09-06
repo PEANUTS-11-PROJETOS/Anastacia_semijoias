@@ -24,16 +24,16 @@ export function NavPainel() {
   ]
 
   return (
-    <nav className="flex items-center gap-1">
+    <nav className="flex items-center gap-1 rounded-xl bg-roxo/4 p-1 sm:bg-transparent sm:p-0">
       {abas.map((aba) => (
         <Link
           key={aba.href}
           href={aba.href}
           aria-current={aba.ativa ? 'page' : undefined}
           className={cn(
-            'rounded-lg px-3 py-2 font-rotulo text-[11px] tracking-[0.1em] uppercase transition-colors',
+            'rounded-lg px-3 py-1.5 font-rotulo text-[11px] tracking-[0.1em] uppercase transition-all sm:py-2',
             aba.ativa
-              ? 'bg-roxo/8 text-roxo'
+              ? 'bg-white font-bold text-roxo shadow-xs sm:bg-roxo/8 sm:shadow-none'
               : 'text-tinta-suave hover:text-roxo',
           )}
         >
